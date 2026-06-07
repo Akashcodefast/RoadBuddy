@@ -1,16 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login     from "./pages/Login";
+import Register  from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
 
-function App() {
+const App = () => {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="bg-orange-500 text-white text-xl font-bold px-8 py-4 rounded-xl">
-        RoadBuddy — Tailwind v4 working!
-      </div>
-    </div>
-  )
-}
-export default App
+    <BrowserRouter>
+      <Routes>
+
+        {/* public routes */}
+        <Route path="/login"    element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* protected routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+
+        {/* default redirect */}
+        <Route path="*" element={<Login />} />
+
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+export default App;
