@@ -1,5 +1,6 @@
 import useAuth from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import useLiveLocation from "../hooks/useLiveLocation";
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -10,6 +11,7 @@ const Dashboard = () => {
     navigate("/login");
   };
 
+  const coords = useLiveLocation();
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
       <div className="max-w-2xl mx-auto">
@@ -63,7 +65,9 @@ const Dashboard = () => {
             <div className="text-red-100 text-sm mt-1">Emergency alert</div>
           </div>
         </div>
-
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mt-4 text-sm text-gray-400">
+          📍 Your location: {coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : "Fetching..."}
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,16 @@
-const express  = require("express");
-const http     = require("http");
+const express    = require("express");
+const http       = require("http");
 const { Server } = require("socket.io");
-const cors     = require("cors");
-const helmet   = require("helmet");
-const morgan   = require("morgan");
+const cors       = require("cors");
+const helmet     = require("helmet");
+const morgan     = require("morgan");
 require("dotenv").config();
 
-const connectDB   = require("./config/db");
-const authRoutes  = require("./routes/auth.routes");
+const connectDB      = require("./config/db");
+const initSocket     = require("./config/socket");
+const locationSocket = require("./sockets/location.socket");
+
+const authRoutes = require("./routes/auth.routes");
 
 const app    = express();
 const server = http.createServer(app);
@@ -27,8 +30,12 @@ app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => res.json({ message: "RoadBuddy API running" }));
 
+// init all socket handlers
+initSocket(io);
+locationSocket(io);
+
 connectDB().then(() => {
-  server.listen(process.env.PORT, () => {
-    console.log(`Server running on port ${process.env.PORT}`);
+  server.listen(5000, () => {
+    console.log(`Server running on port 5000`);
   });
 });
