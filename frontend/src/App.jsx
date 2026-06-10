@@ -3,6 +3,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login     from "./pages/Login";
 import Register  from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import CreateRequest from "./pages/CreateRequest";
 
 const App = () => {
   return (
@@ -16,6 +17,7 @@ const App = () => {
         {/* protected routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/request" element={<CreateRequest />} />
         </Route>
 
         {/* default redirect */}
