@@ -4,6 +4,7 @@ import { useSocket }               from "../context/SocketContext";
 import useLiveLocation             from "../hooks/useLiveLocation";
 import MapView                     from "../components/MapView";
 import notificationService         from "../services/notification.service";
+import useAuth                     from "../hooks/useAuth";
 import api                         from "../services/api";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -12,38 +13,50 @@ const LiveTracking = () => {
   const { id }     = useParams();
   const navigate   = useNavigate();
   const { socket } = useSocket();
-  const userCoords = useLiveLocation();          // current user GPS
+  const { user }   = useAuth();
+  const userCoords = useLiveLocation();
 
   const [request,        setRequest       ] = useState(null);
   const [helper,         setHelper        ] = useState(null);
+  const [requester,      setRequester     ] = useState(null);
   const [helperLocation, setHelperLocation] = useState(null);
   const [status,         setStatus        ] = useState("pending");
   const [loading,        setLoading       ] = useState(true);
   const [mapsLoaded,     setMapsLoaded    ] = useState(false);
+  const [isHelper,       setIsHelper      ] = useState(false); // ← key flag
 
-  // load Google Maps script dynamically
+  // load Google Maps script
   useEffect(() => {
     if (!MAPS_KEY) { setMapsLoaded(false); return; }
     if (window.google) { setMapsLoaded(true); return; }
 
-    const script    = document.createElement("script");
-    script.src      = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}`;
-    script.async    = true;
-    script.onload   = () => setMapsLoaded(true);
-    script.onerror  = () => setMapsLoaded(false);
+    const script   = document.createElement("script");
+    script.src     = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}`;
+    script.async   = true;
+    script.onload  = () => setMapsLoaded(true);
+    script.onerror = () => setMapsLoaded(false);
     document.head.appendChild(script);
-
     return () => document.head.removeChild(script);
   }, []);
 
-  // fetch request details
+  // fetch request + figure out role
   useEffect(() => {
     const fetchRequest = async () => {
       try {
         const res = await api.get(`/requests/${id}`);
-        setRequest(res.data);
-        setStatus(res.data.status);
-        if (res.data.helperId) setHelper(res.data.helperId);
+        const data = res.data;
+
+        setRequest(data);
+        setStatus(data.status);
+
+        // am I the helper or the requester?
+        const iAmHelper = data.helperId?._id === user._id ||
+                          data.helperId      === user._id;
+        setIsHelper(iAmHelper);
+
+        if (data.helperId)  setHelper(data.helperId);
+        if (data.userId)    setRequester(data.userId);
+
       } catch (err) {
         console.error("Fetch request error:", err.message);
       } finally {
@@ -51,12 +64,13 @@ const LiveTracking = () => {
       }
     };
     fetchRequest();
-  }, [id]);
+  }, [id, user._id]);
 
-  // socket listeners via notification service
+  // socket listeners
   useEffect(() => {
     if (!socket) return;
 
+    // requester hears this when helper accepts
     notificationService.onRequestAccepted(socket, (data) => {
       setStatus("accepted");
       setHelper({
@@ -67,6 +81,7 @@ const LiveTracking = () => {
       });
     });
 
+    // requester sees helper moving on map
     notificationService.onHelperLocation(socket, ({ lat, lng }) => {
       setHelperLocation({ lat, lng });
     });
@@ -77,6 +92,15 @@ const LiveTracking = () => {
 
     return () => notificationService.cleanup(socket);
   }, [socket]);
+
+  // helper marks complete
+  const handleComplete = () => {
+    socket.emit("complete_request", {
+      requestId: id,
+      helperId:  user._id,
+    });
+    setStatus("completed");
+  };
 
   const handleCancel = async () => {
     try {
@@ -91,7 +115,7 @@ const LiveTracking = () => {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-orange-500 font-bold text-lg animate-pulse">
-          Loading request...
+          Loading...
         </div>
       </div>
     );
@@ -107,9 +131,14 @@ const LiveTracking = () => {
             🛣️
           </div>
           <div>
-            <h1 className="text-lg font-bold">Live Tracking</h1>
+            <h1 className="text-lg font-bold">
+              {isHelper ? "Helping Someone" : "Live Tracking"}
+            </h1>
             <p className="text-gray-400 text-xs">
-              Request #{id.slice(-6).toUpperCase()}
+              Request #{id.slice(-6).toUpperCase()} ·{" "}
+              <span className={isHelper ? "text-green-400" : "text-orange-400"}>
+                {isHelper ? "You are the helper" : "You requested help"}
+              </span>
             </p>
           </div>
         </div>
@@ -132,17 +161,27 @@ const LiveTracking = () => {
               status === "accepted"  ? "text-green-400"  :
               status === "completed" ? "text-blue-400"   : "text-gray-400"
             }`}>
-              {status === "pending"   ? "Waiting for help..."    :
-               status === "accepted"  ? "Helper is on the way!"  :
-               status === "completed" ? "Request completed! 🎉"  : "Cancelled"}
+              {isHelper
+                ? status === "accepted"  ? "Navigate to the user"
+                : status === "completed" ? "Help provided! ✅"
+                : "Request assigned to you"
+                : status === "pending"   ? "Waiting for help..."
+                : status === "accepted"  ? "Helper is on the way!"
+                : status === "completed" ? "Request completed! 🎉"
+                : "Cancelled"
+              }
             </p>
             <p className="text-gray-400 text-xs mt-0.5">
-              {status === "pending"   ? "Top 10 nearby users notified"  :
-               status === "accepted"  ? "Track your helper on the map"  :
-               status === "completed" ? "Thank you for using RoadBuddy" : ""}
+              {isHelper
+                ? status === "accepted" ? "Drive safely to their location"
+                : ""
+                : status === "pending"  ? "Top 10 nearby users notified"
+                : status === "accepted" ? "Track your helper on the map"
+                : ""
+              }
             </p>
           </div>
-          {status === "pending" && (
+          {status === "pending" && !isHelper && (
             <span className="relative flex h-3 w-3 ml-auto">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-400" />
@@ -159,7 +198,6 @@ const LiveTracking = () => {
               helperLocation={helperLocation}
             />
           ) : (
-            // placeholder when no API key
             <div className="h-full flex flex-col items-center justify-center gap-2 relative">
               <div className="absolute inset-0"
                 style={{
@@ -168,7 +206,6 @@ const LiveTracking = () => {
                   backgroundSize: "30px 30px",
                 }}
               />
-              {/* fake user pin */}
               <div className="relative z-10 text-center">
                 <div className="text-4xl mb-2 animate-bounce">📍</div>
                 {userCoords && (
@@ -176,7 +213,7 @@ const LiveTracking = () => {
                     {userCoords.lat.toFixed(4)}, {userCoords.lng.toFixed(4)}
                   </p>
                 )}
-                <p className="text-gray-600 text-xs mt-2">
+                <p className="text-gray-600 text-xs mt-1">
                   Add VITE_GOOGLE_MAPS_API_KEY to enable map
                 </p>
               </div>
@@ -188,7 +225,7 @@ const LiveTracking = () => {
         {request && (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
             <p className="text-gray-400 text-xs mb-3 uppercase tracking-wider">
-              Your Request
+              Issue
             </p>
             <div className="flex items-center gap-4">
               <div className="text-4xl">
@@ -209,8 +246,8 @@ const LiveTracking = () => {
           </div>
         )}
 
-        {/* helper card */}
-        {helper && status === "accepted" && (
+        {/* REQUESTER VIEW — show helper details */}
+        {!isHelper && helper && status === "accepted" && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 mb-4">
             <p className="text-green-400 text-xs mb-3 uppercase tracking-wider">
               Your Helper
@@ -225,13 +262,43 @@ const LiveTracking = () => {
                   ⭐ {helper.rating || "New"} · On the way
                 </p>
               </div>
-              <a
-                href={`tel:${helper.phone}`}
-                className="bg-green-500 hover:bg-green-400 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"
->
+              
+              <a>
                 📞 Call
               </a>
             </div>
+          </div>
+        )}
+
+        {/* HELPER VIEW — show requester details + complete button */}
+        {isHelper && requester && status === "accepted" && (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-5 mb-4">
+            <p className="text-orange-400 text-xs mb-3 uppercase tracking-wider">
+              Person Needing Help
+            </p>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center text-xl font-bold text-orange-400">
+                {requester.name?.[0]?.toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-lg">{requester.name}</p>
+                <p className="text-gray-400 text-sm">
+                  📍 {request?.issueType} issue
+                </p>
+              </div>
+              
+              <a>
+                📞 Call
+              </a>
+            </div>
+
+            {/* mark complete button */}
+            <button
+              onClick={handleComplete}
+              className="w-full mt-4 bg-green-500 hover:bg-green-400 text-white font-bold py-3 rounded-xl transition"
+            >
+              ✅ Mark as Completed
+            </button>
           </div>
         )}
 
@@ -239,9 +306,11 @@ const LiveTracking = () => {
         {status === "completed" && (
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-5 mb-4 text-center">
             <div className="text-4xl mb-2">🎉</div>
-            <p className="font-bold text-blue-400 text-lg">Help Received!</p>
+            <p className="font-bold text-blue-400 text-lg">
+              {isHelper ? "Thank you for helping!" : "Help Received!"}
+            </p>
             <p className="text-gray-400 text-sm mt-1">
-              Please rate your helper
+              {isHelper ? "You made someone's day better 🙌" : "Please rate your helper"}
             </p>
             <button
               onClick={() => navigate("/dashboard")}
@@ -252,8 +321,8 @@ const LiveTracking = () => {
           </div>
         )}
 
-        {/* cancel */}
-        {status === "pending" && (
+        {/* cancel — only requester, only pending */}
+        {!isHelper && status === "pending" && (
           <button
             onClick={handleCancel}
             className="w-full bg-gray-900 border border-gray-700 hover:border-red-500 text-gray-400 hover:text-red-400 font-semibold py-3 rounded-xl transition mt-2"
