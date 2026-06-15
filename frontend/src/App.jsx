@@ -5,6 +5,7 @@ import Register        from "./pages/Register";
 import Dashboard       from "./pages/Dashboard";
 import CreateRequest   from "./pages/CreateRequest";
 import LiveTracking    from "./pages/LiveTracking";
+import Chat from "./pages/Chat";
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/request"   element={<CreateRequest />} />
           <Route path="/track/:id" element={<LiveTracking />} />
+          <Route path="/chat/:requestId" element={<Chat />} />
         </Route>
 
         {/* default redirect */}

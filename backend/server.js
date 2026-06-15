@@ -14,7 +14,8 @@ const requestSocket  = require("./sockets/request.socket");
 
 const authRoutes     = require("./routes/auth.routes");
 const requestRoutes  = require("./routes/request.routes");
-
+const chatRoutes = require("./routes/chat.routes");
+const chatSocket = require("./sockets/chat.socket");
 const app    = express();
 const server = http.createServer(app);
 
@@ -31,6 +32,7 @@ app.use(express.json());
 
 app.use("/api/auth",     authRoutes);
 app.use("/api/requests", requestRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.get("/", (req, res) => res.json({ message: "RoadBuddy API running" }));
 
@@ -38,6 +40,7 @@ app.get("/", (req, res) => res.json({ message: "RoadBuddy API running" }));
 initSocket(io);
 locationSocket(io);
 requestSocket(io);
+chatSocket(io);
 
 connectDB().then(() => {
   server.listen(5000, () => {

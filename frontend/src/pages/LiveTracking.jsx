@@ -23,13 +23,12 @@ const LiveTracking = () => {
   const [status,         setStatus        ] = useState("pending");
   const [loading,        setLoading       ] = useState(true);
   const [mapsLoaded,     setMapsLoaded    ] = useState(false);
-  const [isHelper,       setIsHelper      ] = useState(false); // ← key flag
+  const [isHelper,       setIsHelper      ] = useState(false);
 
   // load Google Maps script
   useEffect(() => {
     if (!MAPS_KEY) { setMapsLoaded(false); return; }
     if (window.google) { setMapsLoaded(true); return; }
-
     const script   = document.createElement("script");
     script.src     = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}`;
     script.async   = true;
@@ -43,20 +42,15 @@ const LiveTracking = () => {
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const res = await api.get(`/requests/${id}`);
+        const res  = await api.get(`/requests/${id}`);
         const data = res.data;
-
         setRequest(data);
         setStatus(data.status);
-
-        // am I the helper or the requester?
         const iAmHelper = data.helperId?._id === user._id ||
-                          data.helperId      === user._id;
+                          data.helperId       === user._id;
         setIsHelper(iAmHelper);
-
-        if (data.helperId)  setHelper(data.helperId);
-        if (data.userId)    setRequester(data.userId);
-
+        if (data.helperId) setHelper(data.helperId);
+        if (data.userId)   setRequester(data.userId);
       } catch (err) {
         console.error("Fetch request error:", err.message);
       } finally {
@@ -69,8 +63,6 @@ const LiveTracking = () => {
   // socket listeners
   useEffect(() => {
     if (!socket) return;
-
-    // requester hears this when helper accepts
     notificationService.onRequestAccepted(socket, (data) => {
       setStatus("accepted");
       setHelper({
@@ -80,20 +72,15 @@ const LiveTracking = () => {
         _id:    data.helperId,
       });
     });
-
-    // requester sees helper moving on map
     notificationService.onHelperLocation(socket, ({ lat, lng }) => {
       setHelperLocation({ lat, lng });
     });
-
     notificationService.onRequestCompleted(socket, () => {
       setStatus("completed");
     });
-
     return () => notificationService.cleanup(socket);
   }, [socket]);
 
-  // helper marks complete
   const handleComplete = () => {
     socket.emit("complete_request", {
       requestId: id,
@@ -173,8 +160,7 @@ const LiveTracking = () => {
             </p>
             <p className="text-gray-400 text-xs mt-0.5">
               {isHelper
-                ? status === "accepted" ? "Drive safely to their location"
-                : ""
+                ? status === "accepted" ? "Drive safely to their location" : ""
                 : status === "pending"  ? "Top 10 nearby users notified"
                 : status === "accepted" ? "Track your helper on the map"
                 : ""
@@ -189,9 +175,21 @@ const LiveTracking = () => {
           )}
         </div>
 
+        {/* chat button — shows when accepted */}
+        {status === "accepted" && (
+          <button
+            onClick={() => navigate(`/chat/${id}`)}
+            className="w-full bg-gray-900 border border-gray-800 hover:border-orange-500 text-white font-semibold py-3 rounded-xl transition mb-4 flex items-center justify-center gap-2"
+          >
+            💬 Open Chat
+          </button>
+        )}
+
         {/* MAP */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl mb-5 overflow-hidden"
-             style={{ height: "260px" }}>
+        <div
+          className="bg-gray-900 border border-gray-800 rounded-2xl mb-5 overflow-hidden"
+          style={{ height: "260px" }}
+        >
           {mapsLoaded ? (
             <MapView
               userLocation={userCoords}
@@ -199,7 +197,8 @@ const LiveTracking = () => {
             />
           ) : (
             <div className="h-full flex flex-col items-center justify-center gap-2 relative">
-              <div className="absolute inset-0"
+              <div
+                className="absolute inset-0"
                 style={{
                   background: "linear-gradient(135deg, #1a1f2e, #151b27)",
                   backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)",
@@ -246,7 +245,7 @@ const LiveTracking = () => {
           </div>
         )}
 
-        {/* REQUESTER VIEW — show helper details */}
+        {/* REQUESTER VIEW — helper details */}
         {!isHelper && helper && status === "accepted" && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 mb-4">
             <p className="text-green-400 text-xs mb-3 uppercase tracking-wider">
@@ -263,14 +262,17 @@ const LiveTracking = () => {
                 </p>
               </div>
               
-              <a>
+               <a
+                href={`tel:${helper.phone}`}
+                className="bg-green-500 hover:bg-green-400 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"
+              >
                 📞 Call
               </a>
             </div>
           </div>
         )}
 
-        {/* HELPER VIEW — show requester details + complete button */}
+        {/* HELPER VIEW — requester details + complete */}
         {isHelper && requester && status === "accepted" && (
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-5 mb-4">
             <p className="text-orange-400 text-xs mb-3 uppercase tracking-wider">
@@ -286,13 +288,13 @@ const LiveTracking = () => {
                   📍 {request?.issueType} issue
                 </p>
               </div>
-              
-              <a>
+              <a
+                href={`tel:${requester.phone}`}
+                className="bg-orange-500 hover:bg-orange-400 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"
+              >
                 📞 Call
               </a>
             </div>
-
-            {/* mark complete button */}
             <button
               onClick={handleComplete}
               className="w-full mt-4 bg-green-500 hover:bg-green-400 text-white font-bold py-3 rounded-xl transition"
@@ -321,7 +323,7 @@ const LiveTracking = () => {
           </div>
         )}
 
-        {/* cancel — only requester, only pending */}
+        {/* cancel — requester only, pending only */}
         {!isHelper && status === "pending" && (
           <button
             onClick={handleCancel}
