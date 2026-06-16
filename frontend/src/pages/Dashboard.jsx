@@ -2,11 +2,12 @@ import { useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import useLiveLocation from "../hooks/useLiveLocation";
 import IncomingRequest from "../components/IncomingRequest";
+import SOSButton from "../components/SOSButton";
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const navigate         = useNavigate();
-  const coords           = useLiveLocation();
+  const navigate = useNavigate();
+  const coords = useLiveLocation();
 
   const handleLogout = () => {
     logout();
@@ -78,11 +79,9 @@ const Dashboard = () => {
             <div className="text-gray-400 text-sm mt-1">Edit details</div>
           </button>
 
-          <button className="bg-red-600 hover:bg-red-500 transition rounded-2xl p-6 text-left">
-            <div className="text-2xl mb-2">📡</div>
-            <div className="font-bold text-white">SOS</div>
-            <div className="text-red-100 text-sm mt-1">Emergency alert</div>
-          </button>
+          <div className="col-span-2">
+            <SOSButton />
+          </div>
 
         </div>
       </div>

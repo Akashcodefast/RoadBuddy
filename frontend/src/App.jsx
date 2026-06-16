@@ -6,6 +6,7 @@ import Dashboard       from "./pages/Dashboard";
 import CreateRequest   from "./pages/CreateRequest";
 import LiveTracking    from "./pages/LiveTracking";
 import Chat from "./pages/Chat";
+import SOSButton from "./components/SOSButton";
 
 const App = () => {
   return (

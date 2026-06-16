@@ -17,7 +17,8 @@ const requestRoutes  = require("./routes/request.routes");
 const chatRoutes = require("./routes/chat.routes");
 const chatSocket = require("./sockets/chat.socket");
 const app    = express();
-const server = http.createServer(app);
+const server = http.createServer(app);4
+const userRoutes = require("./routes/user.routes");
 
 const io = new Server(server, {
   cors: { origin: process.env.CLIENT_URL, methods: ["GET", "POST"] }
@@ -33,6 +34,9 @@ app.use(express.json());
 app.use("/api/auth",     authRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/users", userRoutes);
+
+
 
 app.get("/", (req, res) => res.json({ message: "RoadBuddy API running" }));
 
