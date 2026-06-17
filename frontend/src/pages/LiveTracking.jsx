@@ -1,38 +1,38 @@
-import { useParams, useNavigate }  from "react-router-dom";
-import { useEffect, useState }     from "react";
-import { useSocket }               from "../context/SocketContext";
-import useLiveLocation             from "../hooks/useLiveLocation";
-import MapView                     from "../components/MapView";
-import notificationService         from "../services/notification.service";
-import useAuth                     from "../hooks/useAuth";
-import api                         from "../services/api";
+import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useSocket } from "../context/SocketContext";
+import useLiveLocation from "../hooks/useLiveLocation";
+import MapView from "../components/MapView";
+import notificationService from "../services/notification.service";
+import useAuth from "../hooks/useAuth";
+import api from "../services/api";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const LiveTracking = () => {
-  const { id }     = useParams();
-  const navigate   = useNavigate();
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { socket } = useSocket();
-  const { user }   = useAuth();
+  const { user } = useAuth();
   const userCoords = useLiveLocation();
 
-  const [request,        setRequest       ] = useState(null);
-  const [helper,         setHelper        ] = useState(null);
-  const [requester,      setRequester     ] = useState(null);
+  const [request, setRequest] = useState(null);
+  const [helper, setHelper] = useState(null);
+  const [requester, setRequester] = useState(null);
   const [helperLocation, setHelperLocation] = useState(null);
-  const [status,         setStatus        ] = useState("pending");
-  const [loading,        setLoading       ] = useState(true);
-  const [mapsLoaded,     setMapsLoaded    ] = useState(false);
-  const [isHelper,       setIsHelper      ] = useState(false);
+  const [status, setStatus] = useState("pending");
+  const [loading, setLoading] = useState(true);
+  const [mapsLoaded, setMapsLoaded] = useState(false);
+  const [isHelper, setIsHelper] = useState(false);
 
   // load Google Maps script
   useEffect(() => {
     if (!MAPS_KEY) { setMapsLoaded(false); return; }
     if (window.google) { setMapsLoaded(true); return; }
-    const script   = document.createElement("script");
-    script.src     = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}`;
-    script.async   = true;
-    script.onload  = () => setMapsLoaded(true);
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}`;
+    script.async = true;
+    script.onload = () => setMapsLoaded(true);
     script.onerror = () => setMapsLoaded(false);
     document.head.appendChild(script);
     return () => document.head.removeChild(script);
@@ -42,15 +42,15 @@ const LiveTracking = () => {
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const res  = await api.get(`/requests/${id}`);
+        const res = await api.get(`/requests/${id}`);
         const data = res.data;
         setRequest(data);
         setStatus(data.status);
         const iAmHelper = data.helperId?._id === user._id ||
-                          data.helperId       === user._id;
+          data.helperId === user._id;
         setIsHelper(iAmHelper);
         if (data.helperId) setHelper(data.helperId);
-        if (data.userId)   setRequester(data.userId);
+        if (data.userId) setRequester(data.userId);
       } catch (err) {
         console.error("Fetch request error:", err.message);
       } finally {
@@ -66,10 +66,10 @@ const LiveTracking = () => {
     notificationService.onRequestAccepted(socket, (data) => {
       setStatus("accepted");
       setHelper({
-        name:   data.helperName,
-        phone:  data.helperPhone,
+        name: data.helperName,
+        phone: data.helperPhone,
         rating: data.helperRating,
-        _id:    data.helperId,
+        _id: data.helperId,
       });
     });
     notificationService.onHelperLocation(socket, ({ lat, lng }) => {
@@ -84,7 +84,7 @@ const LiveTracking = () => {
   const handleComplete = () => {
     socket.emit("complete_request", {
       requestId: id,
-      helperId:  user._id,
+      helperId: user._id,
     });
     setStatus("completed");
   };
@@ -131,39 +131,37 @@ const LiveTracking = () => {
         </div>
 
         {/* status banner */}
-        <div className={`rounded-2xl p-4 mb-5 flex items-center gap-3 ${
-          status === "pending"   ? "bg-yellow-500/10 border border-yellow-500/30" :
-          status === "accepted"  ? "bg-green-500/10  border border-green-500/30"  :
-          status === "completed" ? "bg-blue-500/10   border border-blue-500/30"   :
-                                   "bg-gray-800      border border-gray-700"
-        }`}>
+        <div className={`rounded-2xl p-4 mb-5 flex items-center gap-3 ${status === "pending" ? "bg-yellow-500/10 border border-yellow-500/30" :
+            status === "accepted" ? "bg-green-500/10  border border-green-500/30" :
+              status === "completed" ? "bg-blue-500/10   border border-blue-500/30" :
+                "bg-gray-800      border border-gray-700"
+          }`}>
           <span className="text-2xl">
-            {status === "pending"   ? "⏳" :
-             status === "accepted"  ? "🚗" :
-             status === "completed" ? "✅" : "❌"}
+            {status === "pending" ? "⏳" :
+              status === "accepted" ? "🚗" :
+                status === "completed" ? "✅" : "❌"}
           </span>
           <div className="flex-1">
-            <p className={`font-bold ${
-              status === "pending"   ? "text-yellow-400" :
-              status === "accepted"  ? "text-green-400"  :
-              status === "completed" ? "text-blue-400"   : "text-gray-400"
-            }`}>
+            <p className={`font-bold ${status === "pending" ? "text-yellow-400" :
+                status === "accepted" ? "text-green-400" :
+                  status === "completed" ? "text-blue-400" : "text-gray-400"
+              }`}>
               {isHelper
-                ? status === "accepted"  ? "Navigate to the user"
-                : status === "completed" ? "Help provided! ✅"
-                : "Request assigned to you"
-                : status === "pending"   ? "Waiting for help..."
-                : status === "accepted"  ? "Helper is on the way!"
-                : status === "completed" ? "Request completed! 🎉"
-                : "Cancelled"
+                ? status === "accepted" ? "Navigate to the user"
+                  : status === "completed" ? "Help provided! ✅"
+                    : "Request assigned to you"
+                : status === "pending" ? "Waiting for help..."
+                  : status === "accepted" ? "Helper is on the way!"
+                    : status === "completed" ? "Request completed! 🎉"
+                      : "Cancelled"
               }
             </p>
             <p className="text-gray-400 text-xs mt-0.5">
               {isHelper
                 ? status === "accepted" ? "Drive safely to their location" : ""
-                : status === "pending"  ? "Top 10 nearby users notified"
-                : status === "accepted" ? "Track your helper on the map"
-                : ""
+                : status === "pending" ? "Top 10 nearby users notified"
+                  : status === "accepted" ? "Track your helper on the map"
+                    : ""
               }
             </p>
           </div>
@@ -228,10 +226,10 @@ const LiveTracking = () => {
             </p>
             <div className="flex items-center gap-4">
               <div className="text-4xl">
-                {request.issueType === "Fuel"      ? "⛽" :
-                 request.issueType === "Tyre"      ? "🔩" :
-                 request.issueType === "Battery"   ? "🔋" :
-                 request.issueType === "Breakdown" ? "🔧" : "🆘"}
+                {request.issueType === "Fuel" ? "⛽" :
+                  request.issueType === "Tyre" ? "🔩" :
+                    request.issueType === "Battery" ? "🔋" :
+                      request.issueType === "Breakdown" ? "🔧" : "🆘"}
               </div>
               <div>
                 <p className="font-bold text-lg">{request.issueType}</p>
@@ -261,8 +259,8 @@ const LiveTracking = () => {
                   ⭐ {helper.rating || "New"} · On the way
                 </p>
               </div>
-              
-               <a
+
+              <a
                 href={`tel:${helper.phone}`}
                 className="bg-green-500 hover:bg-green-400 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"
               >
@@ -314,12 +312,20 @@ const LiveTracking = () => {
             <p className="text-gray-400 text-sm mt-1">
               {isHelper ? "You made someone's day better 🙌" : "Please rate your helper"}
             </p>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="mt-4 bg-blue-500 hover:bg-blue-400 text-white px-6 py-2 rounded-xl text-sm font-semibold transition"
-            >
-              Back to Dashboard
-            </button>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => navigate("/history")}
+                className="flex-1 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-semibold py-2 rounded-xl transition"
+              >
+                ⭐ Rate
+              </button>
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="flex-1 bg-blue-500 hover:bg-blue-400 text-white font-semibold py-2 rounded-xl transition"
+              >
+                Dashboard
+              </button>
+            </div>
           </div>
         )}
 

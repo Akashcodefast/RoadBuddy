@@ -1,5 +1,6 @@
 const User    = require("../models/User");
 const Request = require("../models/Request");
+const Rating  = require("../models/Rating");
 
 // POST /api/users/sos
 const sendSOS = async (req, res) => {
@@ -10,12 +11,10 @@ const sendSOS = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // get socket io
     const io = req.app.get("io");
 
-    // create an emergency request automatically
     const sosRequest = await Request.create({
-      userId:      userId,
+      userId,
       issueType:   "Other",
       description: message || "🆘 SOS EMERGENCY — Needs immediate help!",
       location: {
@@ -25,7 +24,6 @@ const sendSOS = async (req, res) => {
       status: "pending",
     });
 
-    // notify all nearby users within 5km
     const nearbyUsers = await User.aggregate([
       {
         $geoNear: {
@@ -46,16 +44,15 @@ const sendSOS = async (req, res) => {
       { $limit: 10 },
     ]);
 
-    // send SOS notification to all nearby
     nearbyUsers.forEach((u) => {
       if (u.socketId) {
         io.to(u.socketId).emit("sos_alert", {
-          requestId:     sosRequest._id,
-          senderName:    user.name,
-          senderPhone:   user.phone,
+          requestId:   sosRequest._id,
+          senderName:  user.name,
+          senderPhone: user.phone,
           lat,
           lng,
-          message:       message || "SOS Emergency!",
+          message:     message || "SOS Emergency!",
         });
       }
     });
@@ -82,4 +79,35 @@ const getProfile = async (req, res) => {
   }
 };
 
-module.exports = { sendSOS, getProfile };
+// GET /api/users/history
+const getHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const requests = await Request.find({
+      $or: [{ userId }, { helperId: userId }],
+    })
+      .sort({ createdAt: -1 })
+      .populate("userId",   "name phone rating")
+      .populate("helperId", "name phone rating");
+
+    const withRatings = await Promise.all(
+      requests.map(async (r) => {
+        const myRating = await Rating.findOne({
+          requestId: r._id,
+          giverId:   userId,
+        });
+        return {
+          ...r.toObject(),
+          myRating: myRating || null,
+        };
+      })
+    );
+
+    res.json(withRatings);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { sendSOS, getProfile, getHistory };

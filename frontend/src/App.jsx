@@ -7,6 +7,7 @@ import CreateRequest   from "./pages/CreateRequest";
 import LiveTracking    from "./pages/LiveTracking";
 import Chat from "./pages/Chat";
 import SOSButton from "./components/SOSButton";
+import History from "./pages/History";
 
 const App = () => {
   return (
@@ -23,6 +24,7 @@ const App = () => {
           <Route path="/request"   element={<CreateRequest />} />
           <Route path="/track/:id" element={<LiveTracking />} />
           <Route path="/chat/:requestId" element={<Chat />} />
+          <Route path="/history" element={<History />} />
         </Route>
 
         {/* default redirect */}
