@@ -17,10 +17,7 @@ const sendSOS = async (req, res) => {
       userId,
       issueType:   "Other",
       description: message || "🆘 SOS EMERGENCY — Needs immediate help!",
-      location: {
-        type:        "Point",
-        coordinates: [lng, lat],
-      },
+      location: { type: "Point", coordinates: [lng, lat] },
       status: "pending",
     });
 
@@ -33,13 +30,7 @@ const sendSOS = async (req, res) => {
           spherical:     true,
         },
       },
-      {
-        $match: {
-          _id:      { $ne: userId },
-          isOnline: true,
-          isBusy:   false,
-        },
-      },
+      { $match: { _id: { $ne: userId }, isOnline: true, isBusy: false } },
       { $sort:  { distance: 1 } },
       { $limit: 10 },
     ]);
@@ -50,9 +41,8 @@ const sendSOS = async (req, res) => {
           requestId:   sosRequest._id,
           senderName:  user.name,
           senderPhone: user.phone,
-          lat,
-          lng,
-          message:     message || "SOS Emergency!",
+          lat, lng,
+          message: message || "SOS Emergency!",
         });
       }
     });
@@ -79,6 +69,29 @@ const getProfile = async (req, res) => {
   }
 };
 
+// PATCH /api/users/profile
+const updateProfile = async (req, res) => {
+  try {
+    const { name, phone, vehicleType, vehicleNumber } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (name)  user.name  = name;
+    if (phone) user.phone = phone;
+    if (vehicleType)   user.vehicle.vehicleType   = vehicleType;
+    if (vehicleNumber) user.vehicle.vehicleNumber = vehicleNumber;
+
+    await user.save();
+
+    const updated = await User.findById(user._id).select("-password");
+    res.json(updated);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // GET /api/users/history
 const getHistory = async (req, res) => {
   try {
@@ -93,14 +106,8 @@ const getHistory = async (req, res) => {
 
     const withRatings = await Promise.all(
       requests.map(async (r) => {
-        const myRating = await Rating.findOne({
-          requestId: r._id,
-          giverId:   userId,
-        });
-        return {
-          ...r.toObject(),
-          myRating: myRating || null,
-        };
+        const myRating = await Rating.findOne({ requestId: r._id, giverId: userId });
+        return { ...r.toObject(), myRating: myRating || null };
       })
     );
 
@@ -110,4 +117,74 @@ const getHistory = async (req, res) => {
   }
 };
 
-module.exports = { sendSOS, getProfile, getHistory };
+// ─── ADMIN ONLY ───
+
+// GET /api/users/admin/all
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/users/admin/requests
+const getAllRequests = async (req, res) => {
+  try {
+    const requests = await Request.find()
+      .sort({ createdAt: -1 })
+      .populate("userId",   "name phone")
+      .populate("helperId", "name phone");
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// PATCH /api/users/admin/:id/block
+const toggleUserBlock = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    res.json({ success: true, isBlocked: user.isBlocked });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/users/admin/stats
+const getAdminStats = async (req, res) => {
+  try {
+    const totalUsers      = await User.countDocuments();
+    const onlineUsers     = await User.countDocuments({ isOnline: true });
+    const totalRequests   = await Request.countDocuments();
+    const pendingRequests = await Request.countDocuments({ status: "pending" });
+    const completedRequests = await Request.countDocuments({ status: "completed" });
+
+    res.json({
+      totalUsers,
+      onlineUsers,
+      totalRequests,
+      pendingRequests,
+      completedRequests,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = {
+  sendSOS,
+  getProfile,
+  updateProfile,
+  getHistory,
+  getAllUsers,
+  getAllRequests,
+  toggleUserBlock,
+  getAdminStats,
+};
