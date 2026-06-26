@@ -28,7 +28,7 @@ const App = () => {
           <Route path="/chat/:requestId" element={<Chat />} />
           <Route path="/history" element={<History />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin" element={<AdminPanel />} />          
         </Route>
 
         {/* default redirect */}

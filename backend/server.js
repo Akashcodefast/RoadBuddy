@@ -17,10 +17,10 @@ const requestRoutes  = require("./routes/request.routes");
 const chatRoutes = require("./routes/chat.routes");
 const chatSocket = require("./sockets/chat.socket");
 const app    = express();
-const server = http.createServer(app);4
+const server = http.createServer(app);
 const userRoutes = require("./routes/user.routes");
 const ratingRoutes = require("./routes/rating.routes");
-
+const chatbotRoutes = require("./routes/chatbot.routes");
 
 const io = new Server(server, {
   cors: { origin: process.env.CLIENT_URL, methods: ["GET", "POST"] }
@@ -38,6 +38,7 @@ app.use("/api/requests", requestRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/ratings", ratingRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 
 
 
