@@ -6,7 +6,6 @@ import api from "../services/api";
 const AdminPanel = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
-
     const [tab, setTab] = useState("stats"); // stats | users | requests
     const [stats, setStats] = useState(null);
     const [users, setUsers] = useState([]);

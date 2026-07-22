@@ -71,7 +71,6 @@ const SOSButton = () => {
 
   return (
     <>
-      {/* ── SOS BUTTON ── */}
       {step === "idle" && (
         <button
           onClick={handleSOSTap}

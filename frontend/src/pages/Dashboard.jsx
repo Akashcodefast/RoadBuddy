@@ -102,16 +102,16 @@ const Dashboard = () => {
           </button>
 
           {/* Emergency Contacts — compact, matches other cards */}
-          <button className="bg-red-500/10 border border-red-500/30 hover:border-red-500 transition rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-5 lg:p-6 text-center lg:text-left group">
+          {/* <button className="bg-red-500/10 border border-red-500/30 hover:border-red-500 transition rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-5 lg:p-6 text-center lg:text-left group">
             <div className="text-3xl sm:text-4xl lg:text-5xl mb-1 sm:mb-2 lg:mb-3">🆘</div>
             <div className="font-bold text-xs sm:text-sm lg:text-base">Emergency</div>
             <div className="text-red-400 text-xs hidden sm:block lg:text-sm mt-1">Quick dial</div>
 
             {/* Tooltip on hover */}
-            <div className="absolute hidden group-hover:block bg-gray-800 text-gray-100 text-xs p-2 rounded mt-2 whitespace-nowrap">
+            {/* <div className="absolute hidden group-hover:block bg-gray-800 text-gray-100 text-xs p-2 rounded mt-2 whitespace-nowrap">
               Call 100 (Police) • 102 (Ambulance) • 101 (Fire)
             </div>
-          </button>
+          </button> */} 
         </div>
 
         {/* SOS button — full width on mobile, half on desktop */}
